@@ -11,7 +11,7 @@ Distributes all files among all the peers.
 
 Each file has it row length.
 
-Peer id is calculated by `(row id) / (number of peers)`.
+Peer id is calculated by `(row id) % (number of peers)`.
 
 **DFS is not fault tolerant!** If one of the peer nodes stops you will not be able to read/write records from it.
 
