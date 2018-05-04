@@ -1,0 +1,45 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"github.com/alikhil/TBMS/internals/io"
+	"github.com/alikhil/distributed-fs/internals/utils"
+	"log"
+	"net/rpc"
+)
+
+func main() {
+	remoteEndpoint := flag.String("endpoint", "10.91.41.109:5001", "endpoint of master node")
+	port := flag.Int("port", 5002, "port for rpc connection from master node")
+
+	flag.Parse()
+
+	log.Printf("Peer: Connecting to master with endpoint %v", *remoteEndpoint)
+
+	client, ok := utils.GetRemoteClient(*remoteEndpoint)
+	if !ok {
+		log.Printf("RPC: cannot connect to endpoint %v : %v", remoteEndpoint)
+		return
+	}
+
+	master := master{client: client}
+	err := master.connectAsPeer(*port)
+	if err != nil {
+		log.Fatalf("RPC: failed to connect as a peer: %v", err)
+	}
+
+	fs := localFS{localIO: &io.LocalIO{}}
+	utils.RunRPC("PeerFS", &fs, *port, &fs.isRPCRunning, &fs.rpcListener)
+}
+
+type master struct {
+	client *rpc.Client
+}
+
+func (m *master) connectAsPeer(port int) error {
+	endpoint := fmt.Sprintf("%s:%d", utils.GetIPAddress(), port)
+	var ok bool
+	err := m.client.Call("RemoteIO.AddPeer", &endpoint, &ok)
+	return err
+}
