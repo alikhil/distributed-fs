@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/alikhil/distributed-fs/internals/dfs"
 	"github.com/alikhil/distributed-fs/internals/utils"
 	"log"
 	"net"
@@ -18,14 +17,14 @@ import (
 type masterServer struct {
 	running     bool
 	rpcListener *net.Listener
-	dfs         *dfs.DistributedFileSystem
+	dfs         *DistributedFileSystem
 }
 
 func main() {
 	peersCount := flag.Int("peers", 3, "numbers of peers in DFS")
 	flag.Parse()
 
-	mserver := &masterServer{dfs: &dfs.DistributedFileSystem{RemoteInterface: &dfs.RemoteFS{PeersCount: *peersCount}}}
+	mserver := &masterServer{dfs: &DistributedFileSystem{RemoteInterface: &RemoteFS{PeersCount: *peersCount}}}
 
 	handleSignals(mserver)
 	utils.RunRPC("RemoteIO", mserver.dfs.RemoteInterface, utils.GetRPCPort(), &mserver.running, &mserver.rpcListener)

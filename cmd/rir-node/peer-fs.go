@@ -1,4 +1,4 @@
-package dfs
+package main
 
 import (
 	"net/rpc"
