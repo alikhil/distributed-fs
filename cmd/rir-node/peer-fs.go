@@ -19,3 +19,7 @@ func (peer *PeerIO) Close() error {
 	var b = 4
 	return peer.client.Call("PeerFS.Close", &a, &b)
 }
+
+func (peer *PeerIO) FileExists(fname *string) (bool, error) {
+	return false, nil
+}

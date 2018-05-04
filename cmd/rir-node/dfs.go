@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/alikhil/distributed-fs/internals/utils"
 	"log"
+	"sync/atomic"
 	"time"
 )
 
@@ -43,6 +45,52 @@ type RemoteFS struct {
 	PeersCount             int
 	HealthCheckerIsRunnnig bool
 	HealthCheckerTicker    *time.Ticker
+	ReadyToUse             bool
+}
+
+// type IO interface {
+// 	ReadBytes(file string, offset, count int32) (data []byte, ok bool)
+// 	WriteBytes(file string, offset int32, bytes *[]byte) (ok bool)
+// 	CreateFile(file string) (ok bool)
+// 	FileExists(file string) bool
+// 	DeleteFile(file string) (ok bool)
+// }
+
+func (rfs *RemoteFS) FileExists(filename *string, exists *bool) error {
+	if !rfs.ReadyToUse {
+		return errors.New("master cannot be used as distributed FS yet. wait untill peers will be connected")
+	}
+	res := make(chan bool, 3)
+	var executed int32 = 0
+
+	for _, node := range rfs.Nodes {
+		if node.ConStatus == Connected {
+			go func() {
+				exists, err := node.Peer.FileExists(filename)
+				if err == nil {
+					res <- exists
+				} else {
+					log.Printf("Master: failed to check file(%s) existance: %v", *filename, err)
+				}
+				atomic.AddInt32(&executed, 1)
+
+			}()
+		} else {
+			atomic.AddInt32(&executed, 1)
+		}
+	}
+
+	// TODO: add error returning in case if we can not run file exist in peers
+	go func() {
+		// if no one of the above gorutines executed nothing will be returned
+		// so we wait until last gorutine exetutes and push false to channel
+		for executed < int32(rfs.PeersCount) {
+		}
+		res <- false
+	}()
+
+	*exists = <-res
+	return nil
 }
 
 func (rfs *RemoteFS) AddPeer(peerEndpoint *string, ok *bool) error {
@@ -66,7 +114,11 @@ func (rfs *RemoteFS) AddPeer(peerEndpoint *string, ok *bool) error {
 
 	if connectedBefore == 0 {
 		go runHealthChecker(rfs)
+	}
 
+	if connectedBefore+1 == rfs.PeersCount {
+		log.Printf("Master: needed number of peers connected. Distributed file system ready to use.")
+		rfs.ReadyToUse = true
 	}
 	return nil
 }
