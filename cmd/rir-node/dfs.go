@@ -45,22 +45,160 @@ type RemoteFS struct {
 	PeersCount             int
 	HealthCheckerIsRunnnig bool
 	HealthCheckerTicker    *time.Ticker
+	FileToRecordSize       *map[string]int32
 	ReadyToUse             bool
 }
 
-// type IO interface {
-// 	ReadBytes(file string, offset, count int32) (data []byte, ok bool)
-// 	WriteBytes(file string, offset int32, bytes *[]byte) (ok bool)
-// 	CreateFile(file string) (ok bool)
-// 	FileExists(file string) bool
-// 	DeleteFile(file string) (ok bool)
-// }
+var ErrNotReady = errors.New("master cannot be used as distributed FS yet. wait untill peers will be connected")
+var ErrFileRecordSizeMapNotInited = errors.New("map from file to record size not set")
+
+// InitRecordMappings - should be called before any read and write operation
+func (rfs *RemoteFS) InitRecordMappings(fileToRecordLength *map[string]int32, ok *bool) error {
+	rfs.FileToRecordSize = fileToRecordLength
+	*ok = true
+	return nil
+}
+
+func (rfs *RemoteFS) WriteBytes(writeArgs *utils.IOWriteArgs, ok *bool) error {
+	if !rfs.ReadyToUse {
+		return ErrNotReady
+	}
+
+	if rfs.FileToRecordSize == nil {
+		return ErrFileRecordSizeMapNotInited
+	}
+
+	recordSize := (*rfs.FileToRecordSize)[*writeArgs.Filename]
+	firstID := writeArgs.Offset/recordSize + 1
+	lastID := firstID + int32(len(*writeArgs.Data))/recordSize - 1
+	pcnt := int32(rfs.PeersCount)
+
+	offset := writeArgs.Offset
+	off := int32(0)
+	errs := make(chan error, pcnt)
+
+	var executed int32 = 0
+
+	for id := firstID; id <= lastID; id++ {
+		peerID := id % pcnt
+		go func(off, offset int32) {
+			data := (*writeArgs.Data)[off : off+recordSize]
+			if rfs.Nodes[peerID].ConStatus == Connected {
+				errs <- rfs.Nodes[peerID].Peer.WriteBytes(writeArgs.Filename, offset, &data)
+			} else {
+				errs <- fmt.Errorf("one of peers(%v) is disconnected; we can not update all wr")
+			}
+			atomic.AddInt32(&executed, 1)
+		}(off, offset)
+		offset += recordSize
+		off += recordSize
+	}
+
+	go func() {
+		for executed < lastID-firstID+1 {
+		}
+		errs <- nil
+	}()
+
+	err := <-errs
+	*ok = err == nil
+	return err
+}
+
+func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
+	if !rfs.ReadyToUse {
+		return ErrNotReady
+	}
+
+	if rfs.FileToRecordSize == nil {
+		return ErrFileRecordSizeMapNotInited
+	}
+	results := make([]*[]byte, rfs.PeersCount)
+	errs := make(chan error, rfs.PeersCount)
+	var executed int32 = 0
+
+	for i, node := range rfs.Nodes {
+		if node.ConStatus == Connected {
+			go func() {
+				var err error
+				results[i], err = node.Peer.ReadBytes(readArgs)
+				if err != nil {
+					errs <- err
+				}
+				atomic.AddInt32(&executed, 1)
+			}()
+		} else {
+			errs <- fmt.Errorf("one of peers(%s) is disconnected; failed to delete file from all the peers", *node.Endpoint)
+			atomic.AddInt32(&executed, 1)
+		}
+	}
+
+	go func() {
+		for executed < int32(rfs.PeersCount) {
+		}
+		errs <- nil
+	}()
+
+	err := <-errs
+	if err != nil {
+		return err
+	}
+	recordSize := (*rfs.FileToRecordSize)[*readArgs.Filename]
+	firstID := readArgs.Offset/recordSize + 1
+	lastID := firstID + readArgs.Count/recordSize - 1
+	pcnt := int32(rfs.PeersCount)
+
+	resultArray := make([]byte, 0, readArgs.Count)
+	off := int32(0)
+	for id := firstID; id <= lastID; id++ {
+		peerID := id % pcnt
+		resultArray = append(resultArray, (*results[peerID])[off:off+recordSize]...)
+		off = off + recordSize
+	}
+	*data = resultArray
+	return nil
+}
+
+func (rfs *RemoteFS) DeleteFile(filename *string, res *bool) error {
+	if !rfs.ReadyToUse {
+		return ErrNotReady
+	}
+	errs := make(chan error, rfs.PeersCount)
+	var executed int32 = 0
+
+	for _, node := range rfs.Nodes {
+		if node.ConStatus == Connected {
+			go func() {
+				err := node.Peer.DeleteFile(filename)
+				if err != nil {
+					errs <- err
+					atomic.AddInt32(&executed, 1)
+					log.Printf("Master: failed to delete file(%s): %v", *filename, err)
+				}
+			}()
+		} else {
+			errs <- fmt.Errorf("one of peers(%s) is disconnected; failed to delete file from all the peers", *node.Endpoint)
+			atomic.AddInt32(&executed, 1)
+		}
+	}
+
+	go func() {
+		for executed < int32(rfs.PeersCount) {
+		}
+		errs <- nil
+	}()
+
+	err := <-errs
+	*res = err != nil
+
+	return err
+}
 
 func (rfs *RemoteFS) FileExists(filename *string, exists *bool) error {
 	if !rfs.ReadyToUse {
-		return errors.New("master cannot be used as distributed FS yet. wait untill peers will be connected")
+		return ErrNotReady
 	}
-	res := make(chan bool, 3)
+	res := make(chan bool, rfs.PeersCount)
 	var executed int32 = 0
 
 	for _, node := range rfs.Nodes {
@@ -134,6 +272,7 @@ func runHealthChecker(rfs *RemoteFS) {
 	rfs.HealthCheckerIsRunnnig = true
 
 	for range rfs.HealthCheckerTicker.C {
+		allAreOk := true
 		for _, node := range rfs.Nodes {
 			if node.Peer == nil {
 				client, ok := utils.GetRemoteClient(*node.Endpoint)
@@ -142,6 +281,7 @@ func runHealthChecker(rfs *RemoteFS) {
 						log.Printf("Health: cannot establish rpc connection with peer %s", *node.Endpoint)
 					}
 					node.ConStatus = Disconnected
+					allAreOk = false
 					continue
 				}
 				node.Peer = &PeerIO{client: client}
@@ -153,6 +293,7 @@ func runHealthChecker(rfs *RemoteFS) {
 				}
 				node.ConStatus = Disconnected
 				node.Peer = nil
+				allAreOk = false
 				continue
 			}
 			if node.ConStatus == Disconnected {
@@ -161,5 +302,6 @@ func runHealthChecker(rfs *RemoteFS) {
 			node.ConStatus = Connected
 
 		}
+		rfs.ReadyToUse = allAreOk
 	}
 }
