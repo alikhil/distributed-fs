@@ -76,6 +76,7 @@ func (rfs *RemoteFS) FileExists(filename *string, exists *bool) error {
 
 			}()
 		} else {
+			log.Printf("Master: cannot check file(%s) existance in peer %s, since it's disconnected", *filename, *node.Endpoint)
 			atomic.AddInt32(&executed, 1)
 		}
 	}
