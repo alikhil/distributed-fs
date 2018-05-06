@@ -78,7 +78,8 @@ func (rfs *RemoteFS) WriteBytes(writeArgs *utils.IOWriteArgs, ok *bool) error {
 
 	offset := writeArgs.Offset
 	off := int32(0)
-	errs := make(chan error, pcnt)
+	recordsCnt := lastID - firstID + 1
+	errs := make(chan error, recordsCnt)
 
 	var executed int32 = 0
 
@@ -101,7 +102,7 @@ func (rfs *RemoteFS) WriteBytes(writeArgs *utils.IOWriteArgs, ok *bool) error {
 	}
 
 	go func() {
-		for executed < lastID-firstID+1 {
+		for executed < recordsCnt {
 		}
 		errs <- nil
 	}()
