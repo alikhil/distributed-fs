@@ -26,3 +26,22 @@ Peer id is calculated by `(row id) % (number of peers)`.
 ## How to stop
 
 Stop cluster by stopping master node. It will safely stop all the peers.
+
+## Example
+
+You need 4 terminals
+
+```bash
+# Run in terminal #1
+./master -peers=3
+
+# Run in terminal #2
+./peer -dbdir=peer1 -port=5021
+# Run in terminal #3
+./peer -dbdir=peer2 -port=5022
+# Run in terminal #4
+./peer -dbdir=peer3 -port=5023
+
+```
+
+Then connect to master using endpoint found in it's logs
