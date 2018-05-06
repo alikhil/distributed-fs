@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/alikhil/distributed-fs/internals/utils"
+	"github.com/alikhil/distributed-fs/utils"
 	"log"
 	"net/rpc"
 	"os"

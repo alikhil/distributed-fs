@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/alikhil/distributed-fs/internals/utils"
+	"github.com/alikhil/distributed-fs/utils"
 	"log"
 	"sync/atomic"
 	"time"

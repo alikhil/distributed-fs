@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/alikhil/TBMS/internals/io"
-	"github.com/alikhil/distributed-fs/internals/utils"
+	"github.com/alikhil/distributed-fs/utils"
 
 	"log"
 	"net"
@@ -13,7 +12,6 @@ import (
 )
 
 type localFS struct {
-	localIO      *io.LocalIO
 	isRPCRunning bool
 	rpcListener  *net.Listener
 	dbDir        *string

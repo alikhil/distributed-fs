@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/alikhil/distributed-fs/internals/utils"
+	"github.com/alikhil/distributed-fs/utils"
 	"net/rpc"
 )
 
