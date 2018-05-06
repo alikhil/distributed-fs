@@ -51,6 +51,8 @@ func checkExistance(fullpath string) bool {
 
 func (fs *localFS) FileExists(fname *string, res *bool) error {
 
+	log.Printf("Peer: recieved file exists(%s) request", *fname)
+
 	filename, err := preparePath(fs, fname)
 	if err != nil {
 		return err
@@ -62,6 +64,8 @@ func (fs *localFS) FileExists(fname *string, res *bool) error {
 }
 
 func (fs *localFS) CreateFile(fname *string, res *bool) error {
+	log.Printf("Peer: recieved create file(%s) request", *fname)
+
 	filename, err := preparePath(fs, fname)
 	if err != nil {
 		return err
@@ -73,6 +77,8 @@ func (fs *localFS) CreateFile(fname *string, res *bool) error {
 }
 
 func (fs *localFS) DeleteFile(fname *string, res *bool) error {
+	log.Printf("Peer: recieved delete file(%s) request", *fname)
+
 	filename, err := preparePath(fs, fname)
 
 	if err != nil {
@@ -89,6 +95,8 @@ func (fs *localFS) DeleteFile(fname *string, res *bool) error {
 }
 
 func (fs *localFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
+
+	log.Printf("Peer: recieved read bytes from file(%s) request", *readArgs.Filename)
 
 	fullpath, err := preparePath(fs, readArgs.Filename)
 	if err != nil {
@@ -114,6 +122,7 @@ func (fs *localFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 }
 
 func (fs *localFS) WriteBytes(writeArgs *utils.IOWriteArgs, res *bool) error {
+	log.Printf("Peer: recieved write bytes to file(%s) request", *writeArgs.Filename)
 
 	fullpath, err := preparePath(fs, writeArgs.Filename)
 	if err != nil {
