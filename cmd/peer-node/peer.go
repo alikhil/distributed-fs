@@ -6,6 +6,7 @@ import (
 	"github.com/alikhil/distributed-fs/internals/utils"
 	"log"
 	"net/rpc"
+	"os"
 )
 
 func main() {
@@ -28,6 +29,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("RPC: failed to connect as a peer: %v", err)
 	}
+
+	os.MkdirAll(*dbDir, os.ModePerm)
 
 	fs := localFS{dbDir: dbDir}
 	utils.RunRPC("PeerFS", &fs, *port, &fs.isRPCRunning, &fs.rpcListener)
