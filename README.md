@@ -21,6 +21,8 @@ Peer id is calculated by `(row id) % (number of peers)`.
 2) Run needed number of peer nodes, connect them to master
 3) Resume master node by closing possibility to connect for other peers
 
+**WARN!** if you want to start peer with files from old then **start peers in the same order is in first run** 
+
 ## How to stop
 
 Stop cluster by stopping master node. It will safely stop all the peers.
