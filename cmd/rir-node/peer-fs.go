@@ -43,3 +43,8 @@ func (peer *PeerIO) WriteBytes(filename *string, offset int32, data *[]byte) err
 	err := peer.client.Call("PeerFS.WriteBytes", args, &ok)
 	return err
 }
+
+func (peer *PeerIO) CreateFile(filename *string) error {
+	ok := false
+	return peer.client.Call("PeerFS.CreateFile", filename, &ok)
+}
