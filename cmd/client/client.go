@@ -55,10 +55,10 @@ func main() {
 	// 	log.Printf("bytes writed to file")
 	// }
 
-	rdata, rerr := dfs.ReadBytes(&fname, 0, 15)
+	rdata, ok := dfs.ReadBytes(fname, 0, 15)
 
-	if rerr != nil {
-		log.Printf("error occured: %v", rerr)
+	if !ok {
+		log.Printf("error occured!")
 	} else {
 		log.Printf("bytes read from file %v", rdata)
 	}
