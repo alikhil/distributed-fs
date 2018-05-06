@@ -19,16 +19,16 @@ func (dfs *DFSClient) FileExists(fname string) bool {
 	return ok && err == nil
 }
 
-func (dfs *DFSClient) DeleteFile(fname string) error {
+func (dfs *DFSClient) DeleteFile(fname string) bool {
 	ok := false
-	return dfs.Client.Call("RemoteIO.DeleteFile", &fname, &ok)
+	return dfs.Client.Call("RemoteIO.DeleteFile", &fname, &ok) == nil && ok
 }
 
-func (dfs *DFSClient) ReadBytes(fname string, offset, count int32) (*[]byte, bool) {
+func (dfs *DFSClient) ReadBytes(fname string, offset, count int32) ([]byte, bool) {
 	data := make([]byte, count, count)
 
 	err := dfs.Client.Call("RemoteIO.ReadBytes", &IOReadArgs{Offset: offset, Count: count, Filename: &fname}, &data)
-	return &data, err == nil
+	return data, err == nil
 }
 
 func (dfs *DFSClient) WriteBytes(fname string, offset int32, data *[]byte) bool {
