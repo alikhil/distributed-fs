@@ -87,9 +87,12 @@ func (rfs *RemoteFS) WriteBytes(writeArgs *utils.IOWriteArgs, ok *bool) error {
 		go func(off, offset, peerID int32) {
 			data := (*writeArgs.Data)[off : off+recordSize]
 			if rfs.Nodes[peerID].ConStatus == Connected {
-				errs <- rfs.Nodes[peerID].Peer.WriteBytes(writeArgs.Filename, offset, &data)
+				err := rfs.Nodes[peerID].Peer.WriteBytes(writeArgs.Filename, offset, &data)
+				if err != nil {
+					errs <- err
+				}
 			} else {
-				errs <- fmt.Errorf("one of peers(%v) is disconnected; we can not update all wr")
+				errs <- fmt.Errorf("one of peers(%v) is disconnected; we can not update all wr", *rfs.Nodes[peerID].Endpoint)
 			}
 			atomic.AddInt32(&executed, 1)
 		}(off, offset, peerID)
