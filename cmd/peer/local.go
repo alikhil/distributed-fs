@@ -98,10 +98,12 @@ func (fs *localFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 
 	fullpath, err := preparePath(fs, readArgs.Filename)
 	if err != nil {
+		log.Printf("Peer: could not read bytes: %v", err)
 		return err
 	}
 
 	if !checkExistance(fullpath) {
+		log.Printf("Peer: could not read bytes: %v", os.ErrNotExist)
 		return os.ErrNotExist
 	}
 
@@ -109,13 +111,16 @@ func (fs *localFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 	defer file.Close()
 
 	if err != nil {
+		log.Printf("Peer: could not read bytes: %v", err)
 		return err
 	}
 	*data = make([]byte, readArgs.Count, readArgs.Count)
 	var _, er = file.ReadAt(*data, int64(readArgs.Offset))
 	if er != nil {
-		return err
+		log.Printf("Peer: could not read bytes(%v): %v", *readArgs, er)
+		return er
 	}
+	log.Printf("Peer: read bytes succesfully")
 	return nil
 }
 
