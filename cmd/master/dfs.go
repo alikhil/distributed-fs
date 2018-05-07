@@ -90,6 +90,7 @@ func (rfs *RemoteFS) WriteBytes(writeArgs *utils.IOWriteArgs, ok *bool) error {
 			if rfs.Nodes[peerID].ConStatus == Connected {
 				err := rfs.Nodes[peerID].Peer.WriteBytes(writeArgs.Filename, offset, &data)
 				if err != nil {
+					log.Printf("Master: one of peers failed to write %v", *readArgs)
 					errs <- err
 				}
 			} else {
@@ -132,6 +133,7 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 				var err error
 				results[i], err = node.Peer.ReadBytes(readArgs)
 				if err != nil {
+					log.Printf("Master: one of peers failed to read %v", *readArgs)
 					errs <- err
 				}
 				atomic.AddInt32(&executed, 1)
@@ -150,6 +152,7 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 
 	err := <-errs
 	if err != nil {
+		log.Printf("Master: responded with %v", err)
 		return err
 	}
 	recordSize := (*rfs.FileToRecordSize)[*readArgs.Filename]
