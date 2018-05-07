@@ -150,7 +150,6 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 		errs <- nil
 	}()
 
-	bytes.
 	err := <-errs
 	if err != nil {
 		log.Printf("Master: responded with %v", err)
