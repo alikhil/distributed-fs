@@ -90,7 +90,7 @@ func (rfs *RemoteFS) WriteBytes(writeArgs *utils.IOWriteArgs, ok *bool) error {
 			if rfs.Nodes[peerID].ConStatus == Connected {
 				err := rfs.Nodes[peerID].Peer.WriteBytes(writeArgs.Filename, offset, &data)
 				if err != nil {
-					log.Printf("Master: one of peers failed to write %v", *readArgs)
+					log.Printf("Master: one of peers failed to write %v", *writeArgs)
 					errs <- err
 				}
 			} else {
@@ -150,6 +150,7 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 		errs <- nil
 	}()
 
+	bytes.
 	err := <-errs
 	if err != nil {
 		log.Printf("Master: responded with %v", err)
