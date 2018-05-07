@@ -36,11 +36,11 @@ You need 4 terminals
 ./master -peers=3
 
 # Run in terminal #2
-./peer -dbdir=peer1 -port=5021 -endpoint=10.91.41.109:5001 # use endpoint from master log
+./peer -fsdir=peer1 -port=5021 -endpoint=10.91.41.109:5001 # use endpoint from master log
 # Run in terminal #3
-./peer -dbdir=peer2 -port=5022 -endpoint=10.91.41.109:5001
+./peer -fsdir=peer2 -port=5022 -endpoint=10.91.41.109:5001
 # Run in terminal #4
-./peer -dbdir=peer3 -port=5023 -endpoint=10.91.41.109:5001
+./peer -fsdir=peer3 -port=5023 -endpoint=10.91.41.109:5001
 
 ```
 

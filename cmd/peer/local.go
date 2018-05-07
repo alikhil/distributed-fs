@@ -14,7 +14,7 @@ import (
 type localFS struct {
 	isRPCRunning bool
 	rpcListener  *net.Listener
-	dbDir        *string
+	fsDir        *string
 }
 
 func (*localFS) Ping(a, b *int) error {
@@ -37,7 +37,7 @@ func preparePath(fs *localFS, fname *string) (string, error) {
 	if strings.Contains(*fname, "/") {
 		return "", fmt.Errorf("path contains directories. dfs does not support directories")
 	}
-	return filepath.Abs(filepath.Join(*fs.dbDir, *fname))
+	return filepath.Abs(filepath.Join(*fs.fsDir, *fname))
 }
 
 func checkExistance(fullpath string) bool {
