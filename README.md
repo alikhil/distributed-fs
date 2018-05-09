@@ -29,7 +29,7 @@ Stop cluster by stopping master node. It will safely stop all the peers.
 
 ## Example
 
-You need 4 terminals
+You will need 4 terminals
 
 ```bash
 # Run in terminal #1
@@ -44,4 +44,7 @@ You need 4 terminals
 
 ```
 
-Then connect to master using endpoint found in it's logs
+**Note:** you can use `-silent=true` mode to hide all logs in the peer and master nodes.
+
+
+Then connect to master with `DFSClient` using endpoint found in it's logs
