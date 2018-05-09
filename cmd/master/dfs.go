@@ -78,39 +78,24 @@ func (rfs *RemoteFS) WriteBytes(writeArgs *utils.IOWriteArgs, ok *bool) error {
 
 	offset := writeArgs.Offset
 	off := int32(0)
-	recordsCnt := lastID - firstID + 1
-	errs := make(chan error, recordsCnt)
-
-	var executed int32 = 0
-	// WARN: Parallel writes can cause problem
 	for id := firstID; id <= lastID; id++ {
 		peerID := id % pcnt
-		go func(off, offset, peerID int32) {
-			data := (*writeArgs.Data)[off : off+recordSize]
-			if rfs.Nodes[peerID].ConStatus == Connected {
-				err := rfs.Nodes[peerID].Peer.WriteBytes(writeArgs.Filename, offset, &data)
-				if err != nil {
-					log.Printf("Master: one of peers failed to write %v", *writeArgs)
-					errs <- err
-				}
-			} else {
-				errs <- fmt.Errorf("one of peers(%v) is disconnected; we can not update all wr", *rfs.Nodes[peerID].Endpoint)
+		data := (*writeArgs.Data)[off : off+recordSize]
+		if rfs.Nodes[peerID].ConStatus == Connected {
+			err := rfs.Nodes[peerID].Peer.WriteBytes(writeArgs.Filename, offset, &data)
+			if err != nil {
+				log.Printf("Master: one of peers failed to write %v", *writeArgs)
+				return err
 			}
-			atomic.AddInt32(&executed, 1)
-		}(off, offset, peerID)
+		} else {
+			return fmt.Errorf("one of peers(%v) is disconnected; we can not update all wr", *rfs.Nodes[peerID].Endpoint)
+		}
 		offset += recordSize
 		off += recordSize
 	}
 
-	go func() {
-		for executed < recordsCnt {
-		}
-		errs <- nil
-	}()
-
-	err := <-errs
-	*ok = err == nil
-	return err
+	*ok = true
+	return nil
 }
 
 func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
@@ -123,7 +108,6 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 	if rfs.FileToRecordSize == nil {
 		return ErrFileRecordSizeMapNotInited
 	}
-	var executed int32 = 0
 
 	recordSize := (*rfs.FileToRecordSize)[*readArgs.Filename]
 	firstID := readArgs.Offset/recordSize + 1
@@ -133,45 +117,24 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 
 	pcnt := int32(rfs.PeersCount)
 
-	errs := make(chan error, recordsCnt+1)
-
 	resultArray := make([]byte, 0, readArgs.Count)
 	cnt := int32(0)
 	for id := firstID; id <= lastID; id++ {
 		peerID := id % pcnt
-		go func(pID, id, i int32) {
-			if rfs.Nodes[pID].ConStatus != Connected {
-				errs <- fmt.Errorf("one of peers(%s) is disconnected; failed to delete file from all the peers", *rfs.Nodes[pID].Endpoint)
-				atomic.AddInt32(&executed, 1)
-			} else {
-				var err error
-				results[i], err = rfs.Nodes[pID].Peer.ReadBytes(
-					&utils.IOReadArgs{Filename: readArgs.Filename,
-						Offset: readArgs.Offset + i*recordSize,
-						Count:  recordSize})
-
-				if err != nil {
-					log.Printf("Master: one of peers failed to read %v", *readArgs)
-					errs <- err
-				}
-
-				atomic.AddInt32(&executed, 1)
-			}
-		}(peerID, id, cnt)
-		cnt++
-	}
-
-	go func() {
-		for executed < recordsCnt {
+		if rfs.Nodes[peerID].ConStatus != Connected {
+			return fmt.Errorf("one of peers(%s) is disconnected; failed to delete file from all the peers", *rfs.Nodes[peerID].Endpoint)
 		}
-		errs <- nil
-	}()
+		var err error
+		results[cnt], err = rfs.Nodes[peerID].Peer.ReadBytes(
+			&utils.IOReadArgs{Filename: readArgs.Filename,
+				Offset: readArgs.Offset + cnt*recordSize,
+				Count:  recordSize})
 
-	// log.Printf("Master: wait for errors...")
-	err := <-errs
-	if err != nil {
-		log.Printf("Master: responded with %v", err)
-		return err
+		if err != nil {
+			log.Printf("Master: one of peers failed to read %v", *readArgs)
+			return err
+		}
+		cnt++
 	}
 
 	for _, record := range results {
@@ -182,8 +145,6 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 	*data = resultArray
 	return nil
 }
-
-// TODO: Refactor most of functions above and below have same code
 
 func (rfs *RemoteFS) CreateFile(filename *string, res *bool) error {
 	log.Printf("Master: recieved create file(%s) request", *filename)
