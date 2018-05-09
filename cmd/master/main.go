@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/alikhil/distributed-fs/utils"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -22,7 +23,12 @@ type masterServer struct {
 
 func main() {
 	peersCount := flag.Int("peers", 3, "numbers of peers in DFS")
+	silent := flag.Bool("silent", false, "if true no log will be printed")
+
 	flag.Parse()
+	if *silent {
+		log.SetOutput(ioutil.Discard)
+	}
 
 	mserver := &masterServer{dfs: &DistributedFileSystem{RemoteInterface: &RemoteFS{PeersCount: *peersCount}}}
 

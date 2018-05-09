@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/alikhil/distributed-fs/utils"
+	"io/ioutil"
 	"log"
 	"net/rpc"
 	"os"
@@ -13,8 +14,12 @@ func main() {
 	remoteEndpoint := flag.String("endpoint", "10.91.41.109:5001", "endpoint of master node")
 	port := flag.Int("port", 5002, "port for rpc connection from master node")
 	fsDir := flag.String("fsdir", "peer-data", "directory where all files of the peer will be stored")
+	silent := flag.Bool("silent", false, "if true no log will be printed")
 
 	flag.Parse()
+	if *silent {
+		log.SetOutput(ioutil.Discard)
+	}
 
 	log.Printf("Peer: Connecting to master with endpoint %v", *remoteEndpoint)
 
