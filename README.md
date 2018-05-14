@@ -1,5 +1,7 @@
 # Distributed File System
 
+Simple Distributed File System written fully in pure **Go**.
+
 DFS consist of 2 types of nodes:
 
 * Peer node - where data stored
@@ -46,5 +48,8 @@ You will need 4 terminals
 
 **Note:** you can use `-silent=true` mode to hide all logs in the peer and master nodes.
 
+Then connect to master with `RemoteDFS` using endpoint found in it's logs
 
-Then connect to master with `DFSClient` using endpoint found in it's logs
+## Used in
+
+[TBMS](https://github.com/alikhil/TBMS) - simple graph database.
