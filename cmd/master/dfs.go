@@ -112,8 +112,6 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 	recordSize := (*rfs.FileToRecordSize)[*readArgs.Filename]
 	firstID := readArgs.Offset/recordSize + 1
 	lastID := firstID + readArgs.Count/recordSize - 1
-	recordsCnt := lastID - firstID + 1
-	results := make([]*[]byte, recordsCnt, recordsCnt)
 
 	pcnt := int32(rfs.PeersCount)
 
@@ -124,8 +122,7 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 		if rfs.Nodes[peerID].ConStatus != Connected {
 			return fmt.Errorf("one of peers(%s) is disconnected; failed to delete file from all the peers", *rfs.Nodes[peerID].Endpoint)
 		}
-		var err error
-		results[cnt], err = rfs.Nodes[peerID].Peer.ReadBytes(
+		record, err := rfs.Nodes[peerID].Peer.ReadBytes(
 			&utils.IOReadArgs{Filename: readArgs.Filename,
 				Offset: readArgs.Offset + cnt*recordSize,
 				Count:  recordSize})
@@ -134,12 +131,11 @@ func (rfs *RemoteFS) ReadBytes(readArgs *utils.IOReadArgs, data *[]byte) error {
 			log.Printf("Master: one of peers failed to read %v", *readArgs)
 			return err
 		}
+		resultArray = append(resultArray, (*record)...)
+
 		cnt++
 	}
 
-	for _, record := range results {
-		resultArray = append(resultArray, (*record)...)
-	}
 	log.Printf("Master: read request executed successfully")
 
 	*data = resultArray
